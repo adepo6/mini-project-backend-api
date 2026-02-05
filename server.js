@@ -530,56 +530,221 @@
 
 
 
+// const express = require('express');
+// const app = express();
+// const PORT = 5001;
+
+// app.use(express.json());
+
+// // Storage
+// let products = [];
+// let cart = [];
+// let orders = [];
+// let productCounter = 1;
+
+// // Home
+// app.get('/', (req, res) => {
+//   res.json({ message: 'E-commerce API' });
+// });
+
+// // Products
+// app.get('/api/products', (req, res) => {
+//   res.json(products);
+// });
+// // ----- PRODUCTS -----
+// app.post('/api/products', (req, res) => {
+//   try {
+//     if (!req.body) throw new Error('No data');
+    
+//     const product = {
+//       id: productCounter++,
+//       name: req.body.name || 'Product',
+//       price: req.body.price || 0,
+//       stock: req.body.stock || 0,
+//       category: req.body.category || 'General',
+//       createdAt: new Date()
+//     };
+    
+//     products.push(product);
+//     res.status(201).json(product);
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
+// // app.post('/api/products', (req, res) => {
+// //   const { name, price } = req.body;
+// //   const product = { id: productCounter++, name, price };
+// //   products.push(product);
+// //   res.status(201).json(product);
+// // });
+
+// // Cart
+// app.get('/api/cart', (req, res) => {
+//   res.json(cart);
+// });
+// // ----- CART -----
+// app.post('/api/cart', (req, res) => {
+//   try {
+//     if (!req.body) throw new Error('No data');
+    
+//     const item = {
+//       productId: req.body.productId || 1,
+//       quantity: req.body.quantity || 1
+//     };
+    
+//     cart.push(item);
+//     res.status(201).json(cart);
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
+// // app.post('/api/cart', (req, res) => {
+// //   cart.push(req.body);
+// //   res.status(201).json(cart);
+// // });
+
+// // Orders
+// app.get('/api/orders', (req, res) => {
+//   res.json(orders);
+// });
+
+// // ----- ORDERS -----
+// app.post('/api/orders', (req, res) => {
+//   try {
+//     if (!req.body) throw new Error('No data');
+    
+//     const order = {
+//       id: orders.length + 1,
+//       items: cart.length > 0 ? [...cart] : [],
+//       total: 100, // Simplified
+//       date: new Date(),
+//       customerInfo: req.body.customerInfo || {}
+//     };
+    
+//     orders.push(order);
+//     cart = []; // Clear cart
+//     res.status(201).json(order);
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
+// // app.post('/api/orders', (req, res) => {
+// //   const order = { id: orders.length + 1, ...req.body };
+// //   orders.push(order);
+// //   res.status(201).json(order);
+// // });
+
+// app.listen(PORT, () => {
+//   console.log(`✅ Server: http://localhost:${PORT}`);
+// });
+
+
 const express = require('express');
 const app = express();
 const PORT = 5001;
 
+// Middleware MUST be first
 app.use(express.json());
 
-// Storage
+// In-memory storage
 let products = [];
 let cart = [];
 let orders = [];
 let productCounter = 1;
 
-// Home
+// ========== ROUTES ==========
+
+// 1. HOME
 app.get('/', (req, res) => {
-  res.json({ message: 'E-commerce API' });
+  res.json({ 
+    message: 'E-commerce API',
+    endpoints: {
+      products: '/api/products',
+      cart: '/api/cart',
+      orders: '/api/orders'
+    }
+  });
 });
 
-// Products
+// 2. PRODUCTS
+// GET all products
 app.get('/api/products', (req, res) => {
   res.json(products);
 });
 
+// POST create product (SIMPLIFIED)
 app.post('/api/products', (req, res) => {
-  const { name, price } = req.body;
-  const product = { id: productCounter++, name, price };
-  products.push(product);
-  res.status(201).json(product);
+  try {
+    const { name, price } = req.body || {};
+    
+    if (!name || !price) {
+      return res.status(400).json({ error: 'Name and price required' });
+    }
+    
+    const product = {
+      id: productCounter++,
+      name,
+      price: Number(price),
+      createdAt: new Date()
+    };
+    
+    products.push(product);
+    res.status(201).json(product);
+  } catch (error) {
+    res.status(400).json({ error: 'Invalid data' });
+  }
 });
 
-// Cart
+// 3. CART
+// GET cart
 app.get('/api/cart', (req, res) => {
   res.json(cart);
 });
 
+// POST add to cart
 app.post('/api/cart', (req, res) => {
-  cart.push(req.body);
-  res.status(201).json(cart);
+  try {
+    const { productId } = req.body || {};
+    
+    const item = {
+      productId: productId || 1,
+      quantity: 1
+    };
+    
+    cart.push(item);
+    res.status(201).json(cart);
+  } catch (error) {
+    res.status(400).json({ error: 'Invalid data' });
+  }
 });
 
-// Orders
+// 4. ORDERS
+// GET orders
 app.get('/api/orders', (req, res) => {
   res.json(orders);
 });
 
+// POST create order
 app.post('/api/orders', (req, res) => {
-  const order = { id: orders.length + 1, ...req.body };
-  orders.push(order);
-  res.status(201).json(order);
+  try {
+    const order = {
+      id: orders.length + 1,
+      items: [...cart],
+      total: 100,
+      date: new Date(),
+      customerInfo: {}
+    };
+    
+    orders.push(order);
+    cart = []; // Clear cart
+    res.status(201).json(order);
+  } catch (error) {
+    res.status(400).json({ error: 'Invalid data' });
+  }
 });
 
+// Start server
 app.listen(PORT, () => {
-  console.log(`✅ Server: http://localhost:${PORT}`);
+  console.log(`✅ Server running: http://localhost:${PORT}`);
+  console.log('📦 Endpoints ready for testing');
 });
