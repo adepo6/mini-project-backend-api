@@ -10,7 +10,7 @@
 // let productId = 1;
 // let orderId = 1;
 
-// // Home
+// Home
 // app.get('/', (req, res) => {
 //   res.json({ 
 //     message: 'E-commerce API',
@@ -107,7 +107,7 @@
 //     customerInfo: req.body.customerInfo || {}
 //   };
   
-//   orders.push(order);
+  // orders.push(order);
 //   cart = []; // Clear cart
 //   res.status(201).json(order);
 // });
@@ -153,25 +153,59 @@
 //   console.log(`✅ Open browser to see JSON`);
 // });
 
-// // const express = require('express');
-// // // const app = express();
-// // // const PORT = 5001; // Back to 5000
-// // app.use(express.json());
+// const express = require('express');
+// // const app = express();
+// // const PORT = 5001; // Back to 5000
+// app.use(express.json());
+
+
+
+
+
+
+
+
 
 
 // require('dotenv').config();
-// console.log('MongoDB URI loaded:', process.env.MONGODB_URI ? 'Yes' : 'No');
+
 // const express = require('express');
 // const app = express();
 // const PORT = 5001;
 
 // app.use(express.json());
 
+// const mongoose = require('mongoose');
+// const useMongoDB = process.env.MONGODB_URI ? true : false;
+
+// if (useMongoDB) {
+//   mongoose.connect(process.env.MONGODB_URI)
+//     .then(() => console.log('MongoDB Connected'))
+//     .catch(err => console.log('MongoDB failed, using in-memory:', err.message));
+// } else {
+//   console.log(' Using in-memory storage (no MongoDB)');
+// }
+
+// // MongoDB Product Model (if using MongoDB)
+// let Product;
+// if (useMongoDB) {
+//   const productSchema = new mongoose.Schema({
+//     name: { type: String, required: true },
+//     description: { type: String, required: true },
+//     price: { type: Number, required: true, min: 0 },
+//     stock: { type: Number, required: true, min: 0, default: 0 },
+//     category: { type: String, required: true },
+//     imageUrl: { type: String, default: '' }
+//   }, { timestamps: true });
+//   Product = mongoose.model('Product', productSchema);
+// }
+// console.log('MongoDB URI loaded:', process.env.MONGODB_URI ? 'Yes' : 'No');
 // // In-memory storage (for testing)
 // let products = [];
 // let cart = [];
 // let orders = [];
 // let productCounter = 1;
+
 
 // // Home
 // app.get('/', (req, res) => {
@@ -201,24 +235,53 @@
 
 // // ----- PRODUCT ENDPOINTS -----
 // // GET all products
-// app.get('/api/products', (req, res) => {
+// // app.get('/api/products', (req, res) => {
+// //   const { category, minPrice, maxPrice } = req.query;
+// //   let filtered = [...products];
+  
+// //   if (category) filtered = filtered.filter(p => p.category === category);
+// //   if (minPrice) filtered = filtered.filter(p => p.price >= Number(minPrice));
+// //   if (maxPrice) filtered = filtered.filter(p => p.price <= Number(maxPrice));
+  
+// //   res.json(filtered);
+// // });
+
+// // // GET single product
+// // app.get('/api/products/:id', (req, res) => {
+// //   const product = products.find(p => p.id === Number(req.params.id));
+// //   if (!product) return res.status(404).json({ error: 'Product not found' });
+// //   res.json(product);
+// // });
+
+// // GET all products
+
+// app.get('/api/products', async (req, res) => {
 //   const { category, minPrice, maxPrice } = req.query;
-//   let filtered = [...products];
   
-//   if (category) filtered = filtered.filter(p => p.category === category);
-//   if (minPrice) filtered = filtered.filter(p => p.price >= Number(minPrice));
-//   if (maxPrice) filtered = filtered.filter(p => p.price <= Number(maxPrice));
-  
-//   res.json(filtered);
+//   if (useMongoDB && Product) {
+//     try {
+//       // MongoDB version
+//       let filter = {};
+//       if (category) filter.category = category;
+//       if (minPrice || maxPrice) {
+//         filter.price = {};
+//         if (minPrice) filter.price.$gte = Number(minPrice);
+//         if (maxPrice) filter.price.$lte = Number(maxPrice);
+//       }
+//       const products = await Product.find(filter);
+//       res.json(products);
+//     } catch (error) {
+//       res.status(500).json({ error: error.message });
+//     }
+//   } else {
+//     // In-memory version (original code)
+//     let filtered = [...products];
+//     if (category) filtered = filtered.filter(p => p.category === category);
+//     if (minPrice) filtered = filtered.filter(p => p.price >= Number(minPrice));
+//     if (maxPrice) filtered = filtered.filter(p => p.price <= Number(maxPrice));
+//     res.json(filtered);
+//   }
 // });
-
-// // GET single product
-// app.get('/api/products/:id', (req, res) => {
-//   const product = products.find(p => p.id === Number(req.params.id));
-//   if (!product) return res.status(404).json({ error: 'Product not found' });
-//   res.json(product);
-// });
-
 // // POST create product
 // app.post('/api/products', (req, res) => {
 //   const { name, description, price, stock, category, imageUrl } = req.body;
@@ -368,26 +431,153 @@
 
 
 
-const express = require('express');
-const mongoose = require('mongoose');
-require('dotenv').config();
 
+
+// const express = require('express');
+// const mongoose = require('mongoose');
+// require('dotenv').config();
+
+// const app = express();
+// const PORT = process.env.PORT || 5001;
+
+// app.use(express.json());
+
+// // MongoDB
+// mongoose.connect(process.env.MONGODB_URI)
+//   .then(() => console.log('MongoDB Connected'))
+//   .catch(err => console.log(' MongoDB Error:', err.message));
+
+// // Routes
+// app.use('/api/products', require('./routes/productRoutes'));
+
+// // Home
+// app.get('/', (req, res) => {
+//   res.json({ message: 'API with MongoDB' });
+// });
+
+// app.listen(PORT, () => {
+//   console.log(` Server: http://localhost:${PORT}`);
+// });
+
+
+
+
+
+// TOP OF FILE - Load environment
+// require('dotenv').config();
+// console.log('DEBUG - PORT:', process.env.PORT);
+// console.log('DEBUG - MONGODB_URI exists?', !!process.env.MONGODB_URI);
+
+// const express = require('express');
+// const app = express();
+// const PORT = process.env.PORT || 5001;
+
+// app.use(express.json());
+
+// // In-memory storage (working version)
+// let products = [];
+// let cart = [];
+// let orders = [];
+// let productCounter = 1;
+
+// // Home
+// app.get('/', (req, res) => {
+//   res.json({ 
+//     message: 'E-commerce API',
+//     status: 'in-memory mode'
+//   });
+// });
+
+// // ----- PRODUCTS -----
+// app.get('/api/products', (req, res) => {
+//   res.json(products);
+// });
+
+// app.post('/api/products', (req, res) => {
+//   const product = { id: productCounter++, ...req.body, createdAt: new Date() };
+//   products.push(product);
+//   res.status(201).json(product);
+// });
+
+// // ----- CART -----
+// app.get('/api/cart', (req, res) => {
+//   res.json(cart);
+// });
+
+// app.post('/api/cart', (req, res) => {
+//   cart.push(req.body);
+//   res.status(201).json(cart);
+// });
+
+// // ----- ORDERS -----
+// app.get('/api/orders', (req, res) => {
+//   res.json(orders);
+// });
+
+// app.post('/api/orders', (req, res) => {
+//   const order = { id: orders.length + 1, ...req.body, date: new Date() };
+//   orders.push(order);
+//   cart = [];
+//   res.status(201).json(order);
+// });
+
+// app.listen(PORT, () => {
+//   console.log(`✅ Server: http://localhost:${PORT}`);
+//   console.log('📦 All endpoints ready');
+// });
+
+
+
+
+
+const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = 5001;
 
 app.use(express.json());
 
-// MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB Connected'))
-  .catch(err => console.log('❌ MongoDB Error:', err.message));
-
-// Routes
-app.use('/api/products', require('./routes/productRoutes'));
+// Storage
+let products = [];
+let cart = [];
+let orders = [];
+let productCounter = 1;
 
 // Home
 app.get('/', (req, res) => {
-  res.json({ message: 'API with MongoDB' });
+  res.json({ message: 'E-commerce API' });
+});
+
+// Products
+app.get('/api/products', (req, res) => {
+  res.json(products);
+});
+
+app.post('/api/products', (req, res) => {
+  const { name, price } = req.body;
+  const product = { id: productCounter++, name, price };
+  products.push(product);
+  res.status(201).json(product);
+});
+
+// Cart
+app.get('/api/cart', (req, res) => {
+  res.json(cart);
+});
+
+app.post('/api/cart', (req, res) => {
+  cart.push(req.body);
+  res.status(201).json(cart);
+});
+
+// Orders
+app.get('/api/orders', (req, res) => {
+  res.json(orders);
+});
+
+app.post('/api/orders', (req, res) => {
+  const order = { id: orders.length + 1, ...req.body };
+  orders.push(order);
+  res.status(201).json(order);
 });
 
 app.listen(PORT, () => {

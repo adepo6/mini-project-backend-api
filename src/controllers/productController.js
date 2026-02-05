@@ -72,7 +72,7 @@
 
 
 
-const Product = require('../models/Product');
+const Product = require('./models/Product');
 
 const getProducts = async (req, res) => {
     try {
