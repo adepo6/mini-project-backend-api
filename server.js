@@ -3,7 +3,6 @@ const express = require('express');
 const app = express();
 const PORT = 5001;
 
-// Middleware MUST be first
 app.use(express.json());
 
 // In-memory storage
@@ -12,7 +11,6 @@ let cart = [];
 let orders = [];
 let productCounter = 1;
 
-// 1. HOME
 app.get('/', (req, res) => {
   res.json({ 
     message: 'E-commerce API',
@@ -24,13 +22,11 @@ app.get('/', (req, res) => {
   });
 });
 
-// 2. PRODUCTS
-// GET all products
 app.get('/api/products', (req, res) => {
   res.json(products);
 });
 
-// POST create product (SIMPLIFIED)
+// POST create products
 app.post('/api/products', (req, res) => {
   try {
     const { name, price } = req.body || {};
@@ -53,8 +49,7 @@ app.post('/api/products', (req, res) => {
   }
 });
 
-// 3. CART
-// GET cart
+// . CART
 app.get('/api/cart', (req, res) => {
   res.json(cart);
 });
@@ -76,7 +71,7 @@ app.post('/api/cart', (req, res) => {
   }
 });
 
-// 4. ORDERS
+//  ORDERS
 app.get('/api/orders', (req, res) => {
   res.json(orders);
 });
@@ -102,5 +97,5 @@ app.post('/api/orders', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running: http://localhost:${PORT}`);
-  console.log(' Endpoints ready for testing');
+  console.log(' Endpoints  are ready for testing');
 });
