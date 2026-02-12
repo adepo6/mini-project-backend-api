@@ -20,9 +20,9 @@
   },
   "homepage": "https://github.com/adepo6/mini-project-backend-api#readme",
   "dependencies": {
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.2.4",
     "express": "^5.2.1",
-    "mongoose": "^9.1.6",
+    "mongoose": "^9.2.1",
     "mongose": "^0.0.2-security"
   },
   "devDependencies": {

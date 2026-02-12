@@ -1,12 +1,25 @@
+// const mongoose = require('mongoose');
+
+// const productSchema = new mongoose.Schema({
+//     name: { type: String, required: true },
+//     description: { type: String, required: true },
+//     price: { type: Number, required: true, min: 0 },
+//     stock: { type: Number, required: true, min: 0, default: 0 },
+//     category: { type: String, required: true },
+//     imageUrl: { type: String, default: '' }
+// }, { timestamps: true });
+
+// // module.exports = mongoose.model('Product', productSchema);
+
 const mongoose = require('mongoose');
 
-const productSchema = new mongoose.Schema({
+const ProductSchema = new mongoose.Schema({
     name: { type: String, required: true },
     description: { type: String, required: true },
     price: { type: Number, required: true, min: 0 },
     stock: { type: Number, required: true, min: 0, default: 0 },
     category: { type: String, required: true },
     imageUrl: { type: String, default: '' }
-}, { timestamps: true });
+}, { timestamps: true }); // Automatically adds createdAt & updatedAt
 
-module.exports = mongoose.model('Product', productSchema);
+module.exports = mongoose.model('Product', ProductSchema);

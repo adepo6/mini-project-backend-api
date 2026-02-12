@@ -1,20 +1,129 @@
 
 const express = require('express');
+const mongoose = require('mongoose');
+require('dotenv').config();
+
 const app = express();
-const PORT = 5001;
+const PORT = process.env.PORT || 5001;
+
+// ========== MONGODB CONNECTION ==========
+mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 30000
+})
+.then(() => {
+  console.log('MongoDB Atlas Connected');
+  // ========== ADD SAMPLE PRODUCTS AFTER CONNECTION ==========
+  addSampleProducts();
+})
+.catch(err => console.log('MongoDB Error:', err.message));
+
+// ========== MODELS ==========
+const productSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: { type: String, default: '' },
+  price: { type: Number, required: true, min: 0 },
+  stock: { type: Number, default: 0, min: 0 },
+  category: { type: String, default: 'General' },
+  imageUrl: { type: String, default: '' }
+}, { timestamps: true });
+
+const Product = mongoose.model('Product', productSchema);
+
+const cartSchema = new mongoose.Schema({
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  quantity: { type: Number, required: true, min: 1, default: 1 }
+}, { timestamps: true });
+
+const Cart = mongoose.model('Cart', cartSchema);
+
+const orderSchema = new mongoose.Schema({
+  items: [{
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    quantity: { type: Number, required: true }
+  }],
+  total: { type: Number, required: true, min: 0 },
+  customerInfo: { type: Object, default: {} },
+  status: { type: String, default: 'pending' }
+}, { timestamps: true });
+
+const Order = mongoose.model('Order', orderSchema);
+
+// ========== SAMPLE PRODUCTS FUNCTION ==========
+async function addSampleProducts() {
+  try {
+    // Check if products already exist
+    const count = await Product.countDocuments();
+    
+    if (count === 0) {
+      console.log('Adding sample products to database...');
+      
+      const sampleProducts = [
+        {
+          name: 'MacBook Pro 16"',
+          description: 'Apple M3 chip, 16GB RAM, 512GB SSD',
+          price: 2499,
+          stock: 15,
+          category: 'Laptops',
+          imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8'
+        },
+        {
+          name: 'Wireless Mouse',
+          description: 'Ergonomic Bluetooth mouse, rechargeable',
+          price: 49,
+          stock: 50,
+          category: 'Accessories',
+          imageUrl: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46'
+        },
+        {
+          name: 'Smartphone',
+          description: '6.7" display, 128GB storage, 5G',
+          price: 899,
+          stock: 20,
+          category: 'Phones',
+          imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9'
+        },
+        {
+          name: 'Tablet',
+          description: '11" display, 64GB WiFi',
+          price: 449,
+          stock: 18,
+          category: 'Tablets',
+          imageUrl: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0'
+        }    
+      ];
+      
+      await Product.insertMany(sampleProducts);
+      console.log(` Added ${sampleProducts.length} sample products to database!`);
+      console.log(' Sample products ready for testing');
+    } else {
+      console.log(`Database already has ${count} products`);
+    }
+  } catch (error) {
+    console.error(' Error adding sample products:', error.message);
+  }
+}
 
 app.use(express.json());
 
-// In-memory storage
-let products = [];
-let cart = [];
-let orders = [];
-let productCounter = 1;
+// ========== TEST ROUTE ==========
+app.get('/test', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Server is running!',
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
+});
 
+// ========== ROUTES ==========
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'E-commerce API',
+    message: 'E-commerce API with MongoDB',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     endpoints: {
+      test: '/test',
       products: '/api/products',
       cart: '/api/cart',
       orders: '/api/orders'
@@ -22,80 +131,207 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/api/products', (req, res) => {
-  res.json(products);
+// ===== PRODUCT ENDPOINTS =====
+app.get('/api/products', async (req, res) => {
+  try {
+    const { category, minPrice, maxPrice } = req.query;
+    let filter = {};
+    
+    if (category) filter.category = category;
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+    
+    const products = await Product.find(filter);
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-// POST create products
-app.post('/api/products', (req, res) => {
+// POST create product
+app.post('/api/products', async (req, res) => {
   try {
-    const { name, price } = req.body || {};
+    console.log('POST /api/products - Request body:', req.body);
+    
+    const { name, description, price, stock, category, imageUrl } = req.body;
     
     if (!name || !price) {
       return res.status(400).json({ error: 'Name and price required' });
     }
     
-    const product = {
-      id: productCounter++,
+    const product = new Product({
       name,
+      description: description || '',
       price: Number(price),
-      createdAt: new Date()
-    };
+      stock: stock || 0,
+      category: category || 'General',
+      imageUrl: imageUrl || ''
+    });
     
-    products.push(product);
+    await product.save();
+    console.log(' Product saved:', product._id);
     res.status(201).json(product);
   } catch (error) {
-    res.status(400).json({ error: 'Invalid data' });
+    console.error('Product creation error:', error.message);
+    res.status(400).json({ error: error.message });
   }
 });
 
-// . CART
-app.get('/api/cart', (req, res) => {
-  res.json(cart);
-});
-
-// POST add to cart
-app.post('/api/cart', (req, res) => {
+app.get('/api/products/:id', async (req, res) => {
   try {
-    const { productId } = req.body || {};
-    
-    const item = {
-      productId: productId || 1,
-      quantity: 1
-    };
-    
-    cart.push(item);
-    res.status(201).json(cart);
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    res.json(product);
   } catch (error) {
-    res.status(400).json({ error: 'Invalid data' });
+    res.status(500).json({ error: error.message });
   }
 });
 
-//  ORDERS
-app.get('/api/orders', (req, res) => {
-  res.json(orders);
+app.put('/api/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    res.json(product);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
-// POST create order
-app.post('/api/orders', (req, res) => {
+app.delete('/api/products/:id', async (req, res) => {
   try {
-    const order = {
-      id: orders.length + 1,
-      items: [...cart],
-      total: 100,
-      date: new Date(),
-      customerInfo: {}
-    };
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== CART ENDPOINTS =====
+app.get('/api/cart', async (req, res) => {
+  try {
+    const cartItems = await Cart.find().populate('productId');
+    res.json(cartItems);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/cart', async (req, res) => {
+  try {
+    console.log('POST /api/cart - Request body:', req.body);
     
-    orders.push(order);
-    cart = []; 
+    const { productId, quantity } = req.body;
+    
+    if (!productId) {
+      return res.status(400).json({ error: 'productId required' });
+    }
+    
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+    
+    const cartItem = new Cart({
+      productId,
+      quantity: quantity || 1
+    });
+    
+    await cartItem.save();
+    console.log('Cart item saved:', cartItem._id);
+    res.status(201).json(cartItem);
+  } catch (error) {
+    console.error(' Cart error:', error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/cart/:id', async (req, res) => {
+  try {
+    const cartItem = await Cart.findByIdAndDelete(req.params.id);
+    if (!cartItem) return res.status(404).json({ error: 'Cart item not found' });
+    res.json({ message: 'Item removed from cart' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== ORDER ENDPOINTS =====
+app.get('/api/orders', async (req, res) => {
+  try {
+    const orders = await Order.find().populate('items.productId');
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/orders', async (req, res) => {
+  try {
+    console.log('POST /api/orders - Starting order creation');
+    
+    const cartItems = await Cart.find();
+    
+    if (cartItems.length === 0) {
+      return res.status(400).json({ error: 'Cart is empty' });
+    }
+    
+    let total = 0;
+    const orderItems = [];
+    
+    for (const item of cartItems) {
+      const product = await Product.findById(item.productId);
+      if (product) {
+        total += product.price * item.quantity;
+        orderItems.push({
+          productId: item.productId,
+          quantity: item.quantity
+        });
+      }
+    }
+    
+    const order = new Order({
+      items: orderItems,
+      total,
+      customerInfo: req.body.customerInfo || {},
+      status: 'pending'
+    });
+    
+    await order.save();
+    await Cart.deleteMany({});
+    
+    console.log(' Order created:', order._id);
     res.status(201).json(order);
   } catch (error) {
-    res.status(400).json({ error: 'Invalid data' });
+    console.error(' Order error:', error.message);
+    res.status(400).json({ error: error.message });
   }
 });
 
+app.get('/api/orders/:id', async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).populate('items.productId');
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== START SERVER ==========
 app.listen(PORT, () => {
-  console.log(`Server running: http://localhost:${PORT}`);
-  console.log(' Endpoints  are ready for testing');
+  console.log('\n' + '='.repeat(60));
+  console.log(` SERVER RUNNING: http://localhost:${PORT}`);
+  console.log(` TEST ENDPOINT: http://localhost:${PORT}/test`);
+  console.log(' MongoDB Atlas Integrated');
+  console.log('ENDPOINTS READY:');
+  console.log(`   GET/POST  http://localhost:${PORT}/api/products`);
+  console.log(`   GET/POST  http://localhost:${PORT}/api/cart`);
+  console.log(`   GET/POST  http://localhost:${PORT}/api/orders`);
+  console.log('='.repeat(60) + '\n');
 });
